@@ -3,9 +3,7 @@ import "../styles/styles.css";
 
 const RawCSVTable = ({ data }) => {
     if (!data || data.length === 0) return <div>No data to display.</div>;
-    console.log(data)
     const headers = Object.keys(data[0]);
-
     return (
         <div className="raw-table-container">
             <table className="raw-table">

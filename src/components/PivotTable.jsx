@@ -2,19 +2,17 @@ import React from 'react';
 import '../styles/styles.css';
 import { buildPivotData, formatHeader } from '../pivotLogic';
 
-const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFunc }) => {
-  const { pivot, rowKeys, colKeys } = buildPivotData(rawData, rowFields, colFields, valFields, aggregateFunc);
-
+const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }) => {
+  const { pivot, rowKeys, colKeys } = buildPivotData(rawData, rowFields, colFields, valFields, aggregateFuncs);
   const getKeyStr = (arr) => arr.map(k => k ?? 'Total').join('|');
 
-  const groupByLevel = (keys, level) => {
-    return keys.reduce((acc, key) => {
+  const groupByLevel = (keys, level) =>
+    keys.reduce((acc, key) => {
       const val = key[level] ?? 'Total';
       acc[val] = acc[val] || [];
       acc[val].push(key);
       return acc;
     }, {});
-  };
 
   const countLeafCols = (group, level) => {
     if (level >= colFields.length) return 1;
@@ -22,9 +20,14 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFunc })
     return Object.values(grouped).reduce((sum, g) => sum + countLeafCols(g, level + 1), 0);
   };
 
+  const formatNumber = (num) => {
+    return Number.isInteger(num) ? num : num.toFixed(2);
+  };
+
   const renderColHeaders = () => {
     const levels = colFields.length || 1;
     const headerRows = Array.from({ length: levels + 1 }, () => []);
+
     const buildHeaderMatrix = (keys, level = 0) => {
       const grouped = groupByLevel(keys, level);
       const row = [];
@@ -44,9 +47,10 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFunc })
 
     buildHeaderMatrix(colKeys);
 
-    // Value headers
     headerRows[levels] = colKeys.flatMap(() =>
-      valFields.map(val => ({ value: formatHeader(val) }))
+      valFields.map(val => ({
+        value: `${formatHeader(val)} (${aggregateFuncs[val]})`
+      }))
     );
 
     return (
@@ -88,9 +92,7 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFunc })
         const children = buildRows(group, level + 1);
         children.forEach((childRow, idx) => {
           if (idx === 0) {
-            childRow.unshift(
-              <td rowSpan={rowspan} key={`${level}-${key}`}>{key}</td>
-            );
+            childRow.unshift(<td rowSpan={rowspan} key={`${level}-${key}`}>{key}</td>);
           }
           rows.push(childRow);
         });
@@ -104,7 +106,7 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFunc })
           valFields.forEach(val => {
             const valNum = pivot[rowKeyStr]?.[colKeyStr]?.[val] ?? 0;
             dataRow.push(
-              <td key={`${rowKeyStr}-${colKeyStr}-${val}`}>{valNum}</td>
+              <td key={`${rowKeyStr}-${colKeyStr}-${val}`}>{formatNumber(valNum)}</td>
             );
           });
         });
@@ -132,7 +134,7 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFunc })
             total += pivot[rowStr]?.[colStr]?.[val] || 0;
           });
           totalCells.push(
-            <td key={`total-${colStr}-${val}`}><strong>{total}</strong></td>
+            <td key={`total-${colStr}-${val}`}><strong>{formatNumber(total)}</strong></td>
           );
         });
       });

@@ -9,14 +9,12 @@ function App() {
   const [rawData, setRawData] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [numericHeaders, setNumericHeaders] = useState([]);
-
   const [pivotConfig, setPivotConfig] = useState({
     rowFields: [],
     colFields: [],
     valFields: [],
-    aggregateFunc: 'sum',
+    aggregateFuncs: {},
   });
-
   const [showPivot, setShowPivot] = useState(false);
 
   const handleGeneratePivot = () => {
@@ -46,7 +44,7 @@ function App() {
     }
   }, [rawData, headers]);
 
-  const { rowFields, colFields, valFields, aggregateFunc } = pivotConfig;
+  const { rowFields, colFields, valFields, aggregateFuncs } = pivotConfig;
 
   return (
     <div className="mainApp">
@@ -82,7 +80,7 @@ function App() {
           rowFields={rowFields}
           colFields={colFields}
           valFields={valFields}
-          aggregateFunc={aggregateFunc}
+          aggregateFuncs={aggregateFuncs}
         />
       )}
     </div>

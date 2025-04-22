@@ -1,8 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import '../styles/styles.css';
 
-const PivotConfigurator = ({ headers, numericHeaders, pivotConfig, setPivotConfig }) => {
-  const { rowFields, colFields, valFields, aggregateFunc } = pivotConfig;
+const PivotConfigurator = ({ headers = [], numericHeaders = [], pivotConfig, setPivotConfig }) => {
+  const { rowFields = [], colFields = [], valFields = [], aggregateFuncs = {} } = pivotConfig;
 
   const updateField = useCallback((field, value) => {
     setPivotConfig(prev => {
@@ -15,8 +15,29 @@ const PivotConfigurator = ({ headers, numericHeaders, pivotConfig, setPivotConfi
     });
   }, [setPivotConfig]);
 
-  const updateAggregateFunc = useCallback((func) => {
-    setPivotConfig(prev => ({ ...prev, aggregateFunc: func }));
+  useEffect(() => {
+    setPivotConfig(prev => {
+      const updatedFuncs = { ...prev.aggregateFuncs };
+      prev.valFields.forEach(field => {
+        if (!updatedFuncs[field]) {
+          updatedFuncs[field] = 'sum';
+        }
+      });
+      return { ...prev, aggregateFuncs: updatedFuncs };
+    });
+  }, [pivotConfig.valFields, setPivotConfig]);
+
+  const updateAggregateFunc = useCallback((valField, func) => {
+    setPivotConfig(prev => {
+      const updatedFuncs = {
+        ...prev.aggregateFuncs,
+        [valField]: func
+      };
+      return {
+        ...prev,
+        aggregateFuncs: updatedFuncs
+      };
+    });
   }, [setPivotConfig]);
 
   const renderCheckboxGroup = (label, fieldKey, options) => (
@@ -27,7 +48,7 @@ const PivotConfigurator = ({ headers, numericHeaders, pivotConfig, setPivotConfi
           <label key={`${fieldKey}-${header}`} className="checkbox-label">
             <input
               type="checkbox"
-              checked={pivotConfig[fieldKey].includes(header)}
+              checked={pivotConfig[fieldKey]?.includes(header)}
               onChange={() => updateField(fieldKey, header)}
             />
             {header}
@@ -44,19 +65,24 @@ const PivotConfigurator = ({ headers, numericHeaders, pivotConfig, setPivotConfi
       {renderCheckboxGroup('Values', 'valFields', numericHeaders)}
 
       <div className="field-group">
-        <strong>Aggregate Function:</strong>
+        <strong>Aggregate Function per Value:</strong>
         <div>
-          {['sum', 'avg', 'count'].map(func => (
-            <label key={func} className="radio-label">
-              <input
-                type="radio"
-                name="aggregate"
-                value={func}
-                checked={aggregateFunc === func}
-                onChange={() => updateAggregateFunc(func)}
-              />
-              {func.toUpperCase()}
-            </label>
+          {valFields.map(val => (
+            <div key={`agg-${val}`} style={{ marginBottom: '4px' }}>
+              {val}:
+              {['sum', 'avg', 'count'].map(func => (
+                <label key={`${val}-${func}`} className="radio-label" style={{ marginLeft: '10px' }}>
+                  <input
+                    type="radio"
+                    name={`agg-${val}`}
+                    value={func}
+                    checked={aggregateFuncs[val] === func}
+                    onChange={() => updateAggregateFunc(val, func)}
+                  />
+                  {func.toUpperCase()}
+                </label>
+              ))}
+            </div>
           ))}
         </div>
       </div>
