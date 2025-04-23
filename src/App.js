@@ -64,6 +64,7 @@ function App() {
         />
         {headers.length > 0 && (
           <PivotConfigurator
+           data = {rawData}
             headers={headers}
             numericHeaders={numericHeaders}
             pivotConfig={pivotConfig}

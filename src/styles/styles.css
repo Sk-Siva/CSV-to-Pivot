@@ -133,10 +133,6 @@
   user-select: none;
 }
 
-.field-item.numeric {
-  background-color: #d9f9d9;
-}
-
 .dropzones-panel {
   flex-grow: 1;
   display: flex;
@@ -194,3 +190,4 @@
   color: #aaa;
   font-style: italic;
 }
+

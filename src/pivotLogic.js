@@ -44,6 +44,16 @@ export const buildPivotData = (rawData, rowFields, colFields, valFields, aggrega
 
   const pivot = {};
   const avgStore = {};
+  const minStore = {};
+  const maxStore = {};
+
+  const cleanNumericValue = (value) => {
+    if (typeof value === 'string') {
+      const cleanedValue = value.replace(/[^0-9.-]+/g, '');
+      return parseFloat(cleanedValue);
+    }
+    return parseFloat(value);
+  };
 
   processedData.forEach(row => {
     const rowKey = rowFields.length ? rowFields.map(f => row[f] ?? 'Total') : ['Total'];
@@ -58,8 +68,9 @@ export const buildPivotData = (rawData, rowFields, colFields, valFields, aggrega
     valFields.forEach(valField => {
       const aggFunc = aggregateFuncs[valField] || 'sum';
       const rawVal = row[valField];
-      const value = parseFloat(rawVal);
+      const value = cleanNumericValue(rawVal);
       const isValid = !isNaN(value);
+
       if (aggFunc === 'avg') {
         if (!avgStore[rowStr]) avgStore[rowStr] = {};
         if (!avgStore[rowStr][colStr]) avgStore[rowStr][colStr] = {};
@@ -72,10 +83,18 @@ export const buildPivotData = (rawData, rowFields, colFields, valFields, aggrega
         pivot[rowStr][colStr][valField] = (pivot[rowStr][colStr][valField] || 0) + (isValid ? value : 0);
       } else if (aggFunc === 'count') {
         pivot[rowStr][colStr][valField] = (pivot[rowStr][colStr][valField] || 0) + 1;
+      } else if (aggFunc === 'min') {
+        if (!minStore[rowStr]) minStore[rowStr] = {};
+        if (!minStore[rowStr][colStr]) minStore[rowStr][colStr] = {};
+        minStore[rowStr][colStr][valField] = Math.min(minStore[rowStr][colStr][valField] || value, value);
+      } else if (aggFunc === 'max') {
+        if (!maxStore[rowStr]) maxStore[rowStr] = {};
+        if (!maxStore[rowStr][colStr]) maxStore[rowStr][colStr] = {};
+        maxStore[rowStr][colStr][valField] = Math.max(maxStore[rowStr][colStr][valField] || value, value);
       }
     });
   });
-
+//AVG
   for (const rowStr in avgStore) {
     for (const colStr in avgStore[rowStr]) {
       for (const valField in avgStore[rowStr][colStr]) {
@@ -86,6 +105,22 @@ export const buildPivotData = (rawData, rowFields, colFields, valFields, aggrega
         if (!pivot[rowStr]) pivot[rowStr] = {};
         if (!pivot[rowStr][colStr]) pivot[rowStr][colStr] = {};
         pivot[rowStr][colStr][valField] = avg;
+      }
+    }
+  }
+//MIN
+  for (const rowStr in minStore) {
+    for (const colStr in minStore[rowStr]) {
+      for (const valField in minStore[rowStr][colStr]) {
+        pivot[rowStr][colStr][valField] = minStore[rowStr][colStr][valField];
+      }
+    }
+  }
+//MAX
+  for (const rowStr in maxStore) {
+    for (const colStr in maxStore[rowStr]) {
+      for (const valField in maxStore[rowStr][colStr]) {
+        pivot[rowStr][colStr][valField] = maxStore[rowStr][colStr][valField];
       }
     }
   }
