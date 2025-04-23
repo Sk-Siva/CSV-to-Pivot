@@ -13,14 +13,39 @@ export const getUniqueKeys = (data, fields) => {
   );
 };
 
+const preprocessDateFields = (data, fields) => {
+  return data.map(row => {
+    const newRow = { ...row };
+
+    fields.forEach(field => {
+      const val = row[field];
+      const date = new Date(val);
+
+      if (val && !isNaN(date)) {
+        newRow[`${field}_Year`] = date.getFullYear();
+        newRow[`${field}_Month`] = date.getMonth() + 1; 
+        newRow[`${field}_Day`] = date.getDate();
+      }
+    });
+
+    return newRow;
+  });
+};
+
 export const buildPivotData = (rawData, rowFields, colFields, valFields, aggregateFuncs = {}) => {
-  const rowKeys = rowFields.length ? getUniqueKeys(rawData, rowFields) : [['Total']];
-  const colKeys = colFields.length ? getUniqueKeys(rawData, colFields) : [['Total']];
+  const allFields = [...rowFields, ...colFields];
+  const dateFields = [...new Set(allFields.map(f => f.split('_')[0]))]
+    .filter(base => rawData[0]?.[base] && !rawData[0]?.[`${base}_Year`]);
+
+  const processedData = preprocessDateFields(rawData, dateFields);
+
+  const rowKeys = rowFields.length ? getUniqueKeys(processedData, rowFields) : [['Total']];
+  const colKeys = colFields.length ? getUniqueKeys(processedData, colFields) : [['Total']];
 
   const pivot = {};
-  const avgStore = {}; 
+  const avgStore = {};
 
-  rawData.forEach(row => {
+  processedData.forEach(row => {
     const rowKey = rowFields.length ? rowFields.map(f => row[f] ?? 'Total') : ['Total'];
     const colKey = colFields.length ? colFields.map(f => row[f] ?? 'Total') : ['Total'];
 
@@ -51,7 +76,6 @@ export const buildPivotData = (rawData, rowFields, colFields, valFields, aggrega
     });
   });
 
-  // Now compute average from avgStore
   for (const rowStr in avgStore) {
     for (const colStr in avgStore[rowStr]) {
       for (const valField in avgStore[rowStr][colStr]) {

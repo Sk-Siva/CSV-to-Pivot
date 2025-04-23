@@ -15,11 +15,6 @@ function App() {
     valFields: [],
     aggregateFuncs: {},
   });
-  const [showPivot, setShowPivot] = useState(false);
-
-  const handleGeneratePivot = () => {
-    setShowPivot(true);
-  };
 
   useEffect(() => {
     if (rawData.length > 0 && headers.length > 0) {
@@ -59,22 +54,7 @@ function App() {
         </>
       )}
 
-      {headers.length > 0 && (
-        <>
-          <PivotConfigurator
-            headers={headers}
-            numericHeaders={numericHeaders}
-            pivotConfig={pivotConfig}
-            setPivotConfig={setPivotConfig}
-          />
-
-          <button onClick={handleGeneratePivot} className="generate-btn">
-            Get Pivot Table
-          </button>
-        </>
-      )}
-
-      {showPivot && (
+      <div className='pivot-container'>
         <PivotTable
           rawData={rawData}
           rowFields={rowFields}
@@ -82,7 +62,15 @@ function App() {
           valFields={valFields}
           aggregateFuncs={aggregateFuncs}
         />
-      )}
+        {headers.length > 0 && (
+          <PivotConfigurator
+            headers={headers}
+            numericHeaders={numericHeaders}
+            pivotConfig={pivotConfig}
+            setPivotConfig={setPivotConfig}
+          />
+        )}
+      </div>
     </div>
   );
 }

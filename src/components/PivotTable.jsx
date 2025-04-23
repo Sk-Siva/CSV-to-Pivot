@@ -20,9 +20,7 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
     return Object.values(grouped).reduce((sum, g) => sum + countLeafCols(g, level + 1), 0);
   };
 
-  const formatNumber = (num) => {
-    return Number.isInteger(num) ? num : num.toFixed(2);
-  };
+  const formatNumber = (num) => Number.isInteger(num) ? num : num.toFixed(2);
 
   const renderColHeaders = () => {
     const levels = colFields.length || 1;
@@ -111,8 +109,9 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
           });
         });
 
-        const label = rowFields.length ? key : 'Total';
-        rows.push([<td key={`${level}-${key}`}>{label}</td>, ...dataRow]);
+        const label = rowFields.length ? key : ''; // No label when no rowFields
+        const rowCells = rowFields.length ? [<td key={`${level}-${key}`}>{label}</td>] : [];
+        rows.push([...rowCells, ...dataRow]);
       }
     }
 
@@ -141,7 +140,9 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
 
       return (
         <tr>
-          <td colSpan={rowFields.length}><strong>Total</strong></td>
+          {rowFields.length > 0 && (
+            <td colSpan={rowFields.length}><strong>Total</strong></td>
+          )}
           {totalCells}
         </tr>
       );
@@ -157,17 +158,24 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
     );
   };
 
-  if (!valFields.length) return <p>Please select at least one value field.</p>;
-
   return (
     <div>
-      <h2>Pivot Table</h2>
-      <table className="pivot-table">
-        {renderColHeaders()}
-        {renderBody()}
-      </table>
+      {(valFields.length > 0 || rowFields.length > 0 || colFields.length > 0) ? (
+        <div className='pivot-table-container'>
+          <table className="pivot-table">
+            {renderColHeaders()}
+            {renderBody()}
+          </table>
+        </div>
+      ) : rawData.length > 0 ? (
+        <>
+          <h2>Pivot Table</h2>
+          <p>To Build a report, Choose fields from the PivotTable Fields List</p>
+        </>
+      ) : null}
     </div>
   );
+
 };
 
 export default PivotTable;
