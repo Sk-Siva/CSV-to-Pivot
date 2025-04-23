@@ -19,6 +19,8 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
   };
 
   const isNumericField = (field) => {
+    const datePatterns = ['date', 'year', 'month', 'day'];
+    if (datePatterns.some(p => field.toLowerCase().includes(p))) return false;
     const numericPatterns = [
       'price', 'amount', 'total', 'sum', 'value', 'cost',
       'quantity', 'percent', 'rate', 'ratio', 'salary', 'revenue'
