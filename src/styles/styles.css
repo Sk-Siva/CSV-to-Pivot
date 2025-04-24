@@ -166,8 +166,8 @@
   justify-content: space-between;
   padding: 6px 8px;
   margin-top: 4px;
-  background-color: #e1f5fe;
-  border: 1px solid #90caf9;
+  background-color: #90f9af;
+  border: 1px solid #90f9af;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -184,10 +184,10 @@
 
 .agg-select {
   margin-left: 8px;
+
 }
 
 .placeholder {
   color: #aaa;
   font-style: italic;
 }
-

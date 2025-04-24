@@ -28,19 +28,16 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
 
     const buildHeaderMatrix = (keys, level = 0) => {
       const grouped = groupByLevel(keys, level);
-      const row = [];
 
       for (const val in grouped) {
         const group = grouped[val];
         const span = countLeafCols(group, level + 1) * valFields.length;
-        row.push({ value: val, span });
+        headerRows[level].push({ value: val, span });
 
         if (level + 1 < levels) {
           buildHeaderMatrix(group, level + 1);
         }
       }
-
-      headerRows[level].push(...row);
     };
 
     buildHeaderMatrix(colKeys);
@@ -55,8 +52,8 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
       <thead>
         {headerRows.map((row, rowIndex) => (
           <tr key={`col-header-${rowIndex}`}>
-            {rowIndex === 0 &&
-              (rowFields.length ? rowFields : ['']).map((field, j) => (
+            {rowIndex === 0 && rowFields.length > 0 &&
+              rowFields.map((field, j) => (
                 <th key={`rhead-${j}`} rowSpan={headerRows.length}>
                   {formatHeader(field)}
                 </th>
@@ -109,7 +106,7 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
           });
         });
 
-        const label = rowFields.length ? key : ''; // No label when no rowFields
+        const label = rowFields.length ? key : null;
         const rowCells = rowFields.length ? [<td key={`${level}-${key}`}>{label}</td>] : [];
         rows.push([...rowCells, ...dataRow]);
       }
@@ -119,7 +116,51 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
   };
 
   const renderBody = () => {
-    const structuredRows = buildRows(rowKeys);
+    let structuredRows;
+
+    if (rowFields.length === 0) {
+      const dataRow = [];
+
+      colKeys.forEach(colKey => {
+        const colStr = getKeyStr(colKey);
+        valFields.forEach(val => {
+          let sum = 0;
+          let count = 0;
+          let min = Infinity;
+          let max = -Infinity;
+
+          rowKeys.forEach(rowKey => {
+            const rowStr = getKeyStr(rowKey);
+            const cellValue = pivot[rowStr]?.[colStr]?.[val];
+
+            if (aggregateFuncs[val] === 'count') {
+              sum += cellValue || 0;
+            } else if (aggregateFuncs[val] === 'min' && !isNaN(cellValue)) {
+              min = Math.min(min, cellValue);
+            } else if (aggregateFuncs[val] === 'max' && !isNaN(cellValue)) {
+              max = Math.max(max, cellValue);
+            } else if (aggregateFuncs[val] === 'avg' && !isNaN(cellValue)) {
+              sum += cellValue;
+              count += 1;
+            } else if (aggregateFuncs[val] === 'sum') {
+              sum += cellValue || 0;
+            }
+          });
+
+          const finalValue =
+            aggregateFuncs[val] === 'avg' ? sum / count :
+            aggregateFuncs[val] === 'min' ? min :
+            aggregateFuncs[val] === 'max' ? max :
+            sum;
+
+          dataRow.push(<td key={`val-${colStr}-${val}`}>{formatNumber(finalValue)}</td>);
+        });
+      });
+
+      structuredRows = [[...dataRow]];
+    } else {
+      structuredRows = buildRows(rowKeys);
+    }
 
     const totalRow = () => {
       const totalCells = [];
@@ -127,13 +168,37 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
       colKeys.forEach(colKey => {
         const colStr = getKeyStr(colKey);
         valFields.forEach(val => {
-          let total = 0;
+          let sum = 0;
+          let count = 0;
+          let min = Infinity;
+          let max = -Infinity;
+
           rowKeys.forEach(rowKey => {
             const rowStr = getKeyStr(rowKey);
-            total += pivot[rowStr]?.[colStr]?.[val] || 0;
+            const cellValue = pivot[rowStr]?.[colStr]?.[val];
+
+            if (aggregateFuncs[val] === 'count') {
+              sum += cellValue || 0;
+            } else if (aggregateFuncs[val] === 'min' && !isNaN(cellValue)) {
+              min = Math.min(min, cellValue);
+            } else if (aggregateFuncs[val] === 'max' && !isNaN(cellValue)) {
+              max = Math.max(max, cellValue);
+            } else if (aggregateFuncs[val] === 'avg' && !isNaN(cellValue)) {
+              sum += cellValue;
+              count += 1;
+            } else if (aggregateFuncs[val] === 'sum') {
+              sum += cellValue || 0;
+            }
           });
+
+          const finalValue =
+            aggregateFuncs[val] === 'avg' ? sum / count :
+            aggregateFuncs[val] === 'min' ? min :
+            aggregateFuncs[val] === 'max' ? max :
+            sum;
+
           totalCells.push(
-            <td key={`total-${colStr}-${val}`}><strong>{formatNumber(total)}</strong></td>
+            <td key={`total-${colStr}-${val}`}><strong>{formatNumber(finalValue)}</strong></td>
           );
         });
       });
@@ -175,7 +240,6 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
       ) : null}
     </div>
   );
-
 };
 
 export default PivotTable;

@@ -55,16 +55,13 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
 
     if (zone === 'valFields' && !isNumeric) return;
     if ((zone === 'rowFields' || zone === 'colFields') && isNumeric) {
-      alert('Numeric fields cannot be placed in Rows or Columns.');
       return;
     }
 
     if (zone === 'rowFields' && colFields.includes(field)) {
-      alert('This field is already in the column area.');
       return;
     }
     if (zone === 'colFields' && rowFields.includes(field)) {
-      alert('This field is already in the row area.');
       return;
     }
 
