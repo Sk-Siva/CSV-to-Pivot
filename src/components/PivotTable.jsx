@@ -47,23 +47,17 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
 
     buildHeaderMatrix(colKeys);
 
-    // Add column headers for each value field
     headerRows[levels] = colKeys.flatMap(() =>
       valFields.map(val => ({
         value: `${formatHeader(val)} (${aggregateFuncs[val]})`
       }))
     );
 
-    // Add Total column header
     if (colKeys.length > 0) {
       headerRows[0].push({ value: "Total", span: valFields.length, isTotal: true });
-
-      // Fill middle level headers for Total column if needed
       for (let i = 1; i < levels; i++) {
         headerRows[i].push({ value: "", span: valFields.length, isTotal: true });
       }
-
-      // Add value fields for Total column
       headerRows[levels].push(...valFields.map(val => ({
         value: `${formatHeader(val)} (${aggregateFuncs[val]})`,
         isTotal: true
@@ -160,8 +154,6 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
         const rowKeyArr = group[0];
         const rowKeyStr = getKeyStr(rowKeyArr);
         const dataRow = [];
-
-        // Add cells for each column and value field
         colKeys.forEach(colKey => {
           const colKeyStr = getKeyStr(colKey);
           valFields.forEach(val => {
@@ -174,7 +166,6 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
           });
         });
 
-        // Add total cells for this row
         valFields.forEach(val => {
           const totalValue = calculateRowTotal(rowKeyStr, val);
           dataRow.push(
