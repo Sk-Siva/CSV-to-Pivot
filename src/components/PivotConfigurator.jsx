@@ -5,70 +5,49 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
   const { rowFields = [], colFields = [], valFields = [], aggregateFuncs = {} } = pivotConfig;
 
   const fieldValueMap = useMemo(() => {
-    const map = {};
-    headers.forEach(header => {
-      map[header] = data.map(row => row[header]).filter(val => val !== undefined && val !== null);
-    });
-    return map;
+    return headers.reduce((map, header) => {
+      map[header] = data.map(row => row[header]).filter(v => v !== undefined && v !== null);
+      return map;
+    }, {});
   }, [headers, data]);
 
-  const isNumericValue = (value) => {
-    if (typeof value !== 'string' && typeof value !== 'number') return false;
-    const cleaned = String(value).replace(/[$€₹,]/g, '').trim();
-    return !isNaN(parseFloat(cleaned));
+  const isNumericValue = (v) => {
+    if (typeof v !== 'string' && typeof v !== 'number') return false;
+    return !isNaN(parseFloat(String(v).replace(/[$€₹,]/g, '').trim()));
   };
 
   const isNumericField = (field) => {
-    const datePatterns = ['date', 'year', 'month', 'day'];
-    if (datePatterns.some(p => field.toLowerCase().includes(p))) return false;
-    const numericPatterns = [
-      'price', 'amount', 'total', 'sum', 'value', 'cost',
-      'quantity', 'percent', 'rate', 'ratio', 'salary', 'revenue'
-    ];
-
-    if (numericPatterns.some(p => field.toLowerCase().includes(p))) return true;
-
-    const values = fieldValueMap[field] || [];
-    return values.some(isNumericValue);
+    const lcField = field.toLowerCase();
+    if (['date', 'year', 'month', 'day'].some(p => lcField.includes(p))) return false;
+    if (['price', 'amount', 'total', 'sum', 'value', 'cost', 'quantity', 'percent', 'rate', 'ratio', 'salary', 'revenue'].some(p => lcField.includes(p))) return true;
+    return (fieldValueMap[field] || []).some(isNumericValue);
   };
 
-  let allFields = [...new Set(headers)];
-  if (headers.includes("Date")) {
-    if (!allFields.includes("Date_Year")) allFields.push("Date_Year");
-    if (!allFields.includes("Date_Month")) allFields.push("Date_Month");
-    if (!allFields.includes("Date_Day")) allFields.push("Date_Day");
-  }
+  const allFields = useMemo(() => {
+    const base = new Set(headers);
+    if (base.has('Date')) {
+      ['Date_Year', 'Date_Month', 'Date_Day'].forEach(f => base.add(f));
+    }
+    return [...base];
+  }, [headers]);
 
   useEffect(() => {
     setPivotConfig(prev => {
       const updatedFuncs = { ...prev.aggregateFuncs };
-      prev.valFields.forEach(field => {
-        if (!updatedFuncs[field]) updatedFuncs[field] = 'sum';
-      });
+      prev.valFields.forEach(f => { if (!updatedFuncs[f]) updatedFuncs[f] = 'sum'; });
       return { ...prev, aggregateFuncs: updatedFuncs };
     });
   }, [valFields, setPivotConfig]);
 
   const handleDrop = (e, zone) => {
     const field = e.dataTransfer.getData('field');
+    if (!field || pivotConfig[zone].includes(field)) return;
+
     const isNumeric = isNumericField(field);
+    if ((zone === 'valFields' && !isNumeric) || ((zone === 'rowFields' || zone === 'colFields') && isNumeric)) return;
+    if ((zone === 'rowFields' && colFields.includes(field)) || (zone === 'colFields' && rowFields.includes(field))) return;
 
-    if (zone === 'valFields' && !isNumeric) return;
-    if ((zone === 'rowFields' || zone === 'colFields') && isNumeric) {
-      return;
-    }
-
-    if (zone === 'rowFields' && colFields.includes(field)) {
-      return;
-    }
-    if (zone === 'colFields' && rowFields.includes(field)) {
-      return;
-    }
-
-    setPivotConfig(prev => {
-      if (prev[zone].includes(field)) return prev;
-      return { ...prev, [zone]: [...prev[zone], field] };
-    });
+    setPivotConfig(prev => ({ ...prev, [zone]: [...prev[zone], field] }));
   };
 
   const removeField = (zone, field) => {
@@ -79,41 +58,43 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
     }));
   };
 
-  const onDragStart = (e, field, type) => {
+  const onDragStart = (e, field) => {
     e.dataTransfer.setData('field', field);
     e.dataTransfer.setData('type', isNumericField(field) ? 'numeric' : 'header');
-    if (["Date_Year", "Date_Month", "Date_Day"].includes(field)) {
+    if (['Date_Year', 'Date_Month', 'Date_Day'].includes(field)) {
       e.dataTransfer.setData('isDerivedDate', 'true');
     }
   };
 
   const toggleField = (field) => {
+    const isNumeric = isNumericField(field);
     setPivotConfig(prev => {
-      const isNumeric = isNumericField(field);
-
-      if (isNumeric && !prev.valFields.includes(field)) {
+      const inAny = rowFields.includes(field) || colFields.includes(field) || valFields.includes(field);
+      if (inAny) {
+        return {
+          ...prev,
+          rowFields: prev.rowFields.filter(f => f !== field),
+          colFields: prev.colFields.filter(f => f !== field),
+          valFields: prev.valFields.filter(f => f !== field),
+          aggregateFuncs: { ...prev.aggregateFuncs, [field]: undefined }
+        };
+      }
+      if (isNumeric) {
         return {
           ...prev,
           valFields: [...prev.valFields, field],
           aggregateFuncs: { ...prev.aggregateFuncs, [field]: 'sum' }
         };
       }
-
-      if (!isNumeric && !prev.rowFields.includes(field) && !prev.colFields.includes(field)) {
-        return {
-          ...prev,
-          rowFields: [...prev.rowFields, field],
-        };
-      }
-
-      return {
-        ...prev,
-        rowFields: prev.rowFields.filter(f => f !== field),
-        colFields: prev.colFields.filter(f => f !== field),
-        valFields: prev.valFields.filter(f => f !== field),
-        aggregateFuncs: { ...prev.aggregateFuncs, [field]: undefined }
-      };
+      return { ...prev, rowFields: [...prev.rowFields, field] };
     });
+  };
+
+  const updateAggregateFunc = (field, func) => {
+    setPivotConfig(prev => ({
+      ...prev,
+      aggregateFuncs: { ...prev.aggregateFuncs, [field]: func }
+    }));
   };
 
   const renderDropZone = (label, fieldKey, fields) => (
@@ -121,7 +102,6 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
       <p>{label}</p>
       <div
         className={`drop-zone ${fieldKey}`}
-        data-zone={fieldKey}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDrop(e, fieldKey)}
       >
@@ -130,7 +110,7 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
             key={field}
             className="dropped-field"
             draggable
-            onDragStart={(e) => onDragStart(e, field, isNumericField(field) ? 'numeric' : 'header')}
+            onDragStart={(e) => onDragStart(e, field)}
           >
             {fieldKey === 'valFields' && isNumericField(field) ? `∑ ${field}` : field}
             <button className="remove-btn" onClick={() => removeField(fieldKey, field)}>✖</button>
@@ -140,11 +120,9 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
                 value={aggregateFuncs[field] || 'sum'}
                 onChange={(e) => updateAggregateFunc(field, e.target.value)}
               >
-                <option value="sum">SUM</option>
-                <option value="avg">AVG</option>
-                <option value="count">COUNT</option>
-                <option value="min">MIN</option>
-                <option value="max">MAX</option>
+                {['sum', 'avg', 'count', 'min', 'max'].map(func => (
+                  <option key={func} value={func}>{func.toUpperCase()}</option>
+                ))}
               </select>
             )}
           </div>
@@ -152,13 +130,6 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
       </div>
     </div>
   );
-
-  const updateAggregateFunc = (field, func) => {
-    setPivotConfig(prev => ({
-      ...prev,
-      aggregateFuncs: { ...prev.aggregateFuncs, [field]: func }
-    }));
-  };
 
   return (
     <div className="pivot-ui">
@@ -168,15 +139,13 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
         <div className="scrollable-fields">
           {allFields.map(field => {
             const isNumeric = isNumericField(field);
-            const selected =
-              rowFields.includes(field) || colFields.includes(field) || valFields.includes(field);
-
+            const selected = rowFields.includes(field) || colFields.includes(field) || valFields.includes(field);
             return (
               <label
                 key={field}
                 className={`field-item ${isNumeric ? 'numeric' : ''}`}
                 draggable
-                onDragStart={(e) => onDragStart(e, field, isNumeric ? 'numeric' : 'header')}
+                onDragStart={(e) => onDragStart(e, field)}
               >
                 <input
                   type="checkbox"
@@ -190,7 +159,6 @@ const PivotConfigurator = ({ headers = [], pivotConfig, setPivotConfig, data = [
         </div>
         <p className='para'>Drag Fields between areas below:</p>
       </div>
-
       <div className="dropzones-panel">
         {renderDropZone('Rows', 'rowFields', rowFields)}
         {renderDropZone('Columns', 'colFields', colFields)}
