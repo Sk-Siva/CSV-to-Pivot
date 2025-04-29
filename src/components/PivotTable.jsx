@@ -175,12 +175,15 @@ const PivotTable = ({ rawData, rowFields, colFields, valFields, aggregateFuncs }
   return (
     <div>
       {(valFields.length || rowFields.length || colFields.length) ? (
-        <div className='pivot-table-container'>
+        <div>
+          <h2>Pivot Table</h2>
+          <div className='pivot-table-container'>
           <table className="pivot-table">
             {renderColHeaders()}
             {renderBody()}
           </table>
         </div>
+          </div>
       ) : rawData.length > 0 ? (
         <div className="empty-state">
           <h2>Pivot Table</h2>

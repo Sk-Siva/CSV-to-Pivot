@@ -1,35 +1,52 @@
-import React, { useCallback } from 'react';
+import React from 'react';
+import { useDispatch } from 'react-redux';
 import Papa from 'papaparse';
-import '../styles/styles.css';
 
-const FileUploader = ({ setRawData, setHeaders }) => {
-  const handleFileUpload = useCallback((e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+const FileUploader = () => {
+  const dispatch = useDispatch();
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: ({ data }) => {
-        if (!data || data.length === 0) {
-          console.warn('CSV file is empty or could not be parsed.');
-          setRawData([]);
-          setHeaders([]);
-          return;
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const { data, meta } = results;
+          const processedData = data.map(row => {
+            const newRow = { ...row };
+            if (row.Date) {
+              try {
+                const date = new Date(row.Date);
+                newRow.Date_Year = date.getFullYear();
+                newRow.Date_Month = date.getMonth() + 1;
+                newRow.Date_Day = date.getDate();
+              } catch (e) {
+                console.log(`err : ${e}`)
+              }
+            }
+            return newRow;
+          });
+          
+          dispatch.pivot.setRawData(processedData);
+          dispatch.pivot.setHeaders(meta.fields);
+        },
+        error: (err) => {
+          console.error('CSV parsing error:', err);
+          alert('Error parsing CSV file');
         }
-
-        setRawData(data);
-        setHeaders(Object.keys(data[0]));
-      },
-      error: (error) => {
-        console.error('Error parsing CSV:', error.message);
-      },
-    });
-  }, [setRawData, setHeaders]);
+      });
+    }
+  };
 
   return (
-    <div className="fileInput">
-      <input type="file" accept='.csv' onChange={handleFileUpload} />
+    <div className="file-uploader">
+      <input
+        type="file"
+        onChange={handleFileChange}
+        accept=".csv"
+      />
     </div>
   );
 };

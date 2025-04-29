@@ -94,6 +94,9 @@ export const buildPivotData = (rawData, rowFields, colFields, valFields, aggrega
       }
     });
   });
+  console.log(avgStore)
+  console.log(minStore)
+  console.log(maxStore)
 //AVG
   for (const rowStr in avgStore) {
     for (const colStr in avgStore[rowStr]) {
